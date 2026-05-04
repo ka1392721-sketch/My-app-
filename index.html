@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khan TikTok Clone</title>
+    <style>
+        body { margin: 0; background: #000; color: white; font-family: Arial, sans-serif; overflow: hidden; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Video Feed */
+        .video-feed { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+        .main-video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Progress Bar Container */
+        #upload-overlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 100; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .upload-window { width: 80%; background: #222; padding: 20px; border-radius: 10px; text-align: center; }
+        .progress-container { width: 100%; background: #444; border-radius: 5px; margin: 15px 0; }
+        .progress-bar { width: 0%; height: 10px; background: #fe2c55; border-radius: 5px; transition: width 0.3s; }
+        
+        /* Animated Arrow */
+        .upload-arrow { font-size: 50px; animation: bounce 1s infinite; color: #fe2c55; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* Navigation Bar */
+        .nav-bar { height: 60px; background: #000; border-top: 1px solid #333; display: flex; justify-content: space-around; align-items: center; }
+        .upload-btn { background: #fe2c55; width: 45px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
+
+        /* Gallery Overlay */
+        #gallery-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 200; overflow-y: auto; padding-top: 20px;
+        }
+        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 5px; }
+        .gallery-item { height: 150px; background: #222; position: relative; cursor: pointer; }
+        .gallery-item video { width: 100%; height: 100%; object-fit: cover; }
+        .close-gallery { position: fixed; top: 10px; right: 10px; font-size: 25px; background: #fe2c55; padding: 5px 15px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="video-feed" id="feed">
+        <div id="no-video-msg">ابھی تک کوئی ویڈیو نہیں ہے۔ اپلوڈ کریں!</div>
+    </div>
+
+    <div id="upload-overlay">
+        <div class="upload-window">
+            <div class="upload-arrow">↑</div>
+            <h3>ویڈیو اپلوڈ ہو رہی ہے...</h3>
+            <div class="progress-container">
+                <div class="progress-bar" id="pb"></div>
+            </div>
+            <p id="percentage">0%</p>
+        </div>
+    </div>
+
+    <div id="gallery-overlay">
+        <span class="close-gallery" onclick="toggleGallery()">×</span>
+        <h2 style="text-align: center;">میری پروفائل</h2>
+        <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+
+    <div class="nav-bar">
+        <span onclick="toggleGallery()">🏠 ہوم</span>
+        <label for="video-input" class="upload-btn">+</label>
+        <input type="file" id="video-input" accept="video/*" style="display:none" onchange="startUpload(this)">
+        <span onclick="toggleGallery()">👤 پروفائل</span>
+    </div>
+</div>
+
+<script>
+    let videos = JSON.parse(localStorage.getItem('myVideos')) || [];
+
+    // Load Gallery and Feed
+    function init() {
+        renderGallery();
+        if(videos.length > 0) showMainVideo(videos[0]);
+    }
+
+    function startUpload(input) {
+        if (input.files && input.files[0]) {
+            const overlay = document.getElementById('upload-overlay');
+            const pb = document.getElementById('pb');
+            const percentText = document.getElementById('percentage');
+            overlay.style.display = 'flex';
+
+            let width = 0;
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    completeUpload(input.files[0]);
+                } else {
+                    width += 5;
+                    pb.style.width = width + '%';
+                    percentText.innerText = width + '%';
+                }
+            }, 100);
+        }
+    }
+
+    function completeUpload(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const videoData = e.target.result;
+            videos.unshift(videoData); // نئی ویڈیو شروع میں ڈالیں
+            localStorage.setItem('myVideos', JSON.stringify(videos));
+            
+            document.getElementById('upload-overlay').style.display = 'none';
+            renderGallery();
+            showMainVideo(videoData);
+            alert("ویڈیو کامیابی سے پوسٹ ہو گئی اور گیلری میں شامل کر دی گئی!");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function renderGallery() {
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = '';
+        videos.forEach(v => {
+            const div = document.createElement('div');
+            div.className = 'gallery-item';
+            div.innerHTML = `<video src="${v}"></video>`;
+            div.onclick = () => { showMainVideo(v); toggleGallery(); };
+            grid.appendChild(div);
+        });
+    }
+
+    function showMainVideo(src) {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = `<video class="main-video" src="${src}" autoplay loop controls></video>`;
+    }
+
+    function toggleGallery() {
+        const g = document.getElementById('gallery-overlay');
+        g.style.display = (g.style.display === 'block') ? 'none' : 'block';
+    }
+
+    init();
+</script>
+
+</body>
+  </html>
+          
